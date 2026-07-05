@@ -1,0 +1,6 @@
+fund_code,entry_type,units,avg_cost,currency,target_weight
+DMO1,demo,1000,10.00,TL,25
+DMO2,demo,750,20.00,TL,25
+DMO3,demo,500,30.00,TL,20
+DMO4,demo,1200,8.00,TL,15
+DMO5,demo,600,15.00,TL,15
