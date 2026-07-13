@@ -4,7 +4,10 @@ import streamlit as st
 
 
 def render_section_header(title, subtitle=None):
-    st.markdown(f"### {title}")
+    st.markdown(
+        f'<div class="section-title">{html.escape(str(title))}</div>',
+        unsafe_allow_html=True,
+    )
 
     if subtitle:
         st.caption(subtitle)

@@ -12,6 +12,7 @@ from src.regime_engine import detect_portfolio_regime
 from src.market_data_engine import get_market_pulse
 from ui.components import render_section_header
 from ui.pages.dashboard_sections import render_portfolio_change_tracker
+from ui.pages.fund_explorer import render_fund_detail_dialog
 
 METADATA_PATH = METADATA_CSV_PATH
 
@@ -26,42 +27,54 @@ st.markdown(
     <style>
 
     .main {
-        padding-top: 0.5rem;
+        padding-top: 0.25rem;
     }
 [data-testid="stAppViewContainer"] {
-    border-top: 8px solid #38bdf8;
+    border-top: 4px solid #38bdf8;
 }
     h1 {
-        font-size: 2.2rem !important;
-        font-weight: 700 !important;
-    }
-
-    h2 {
         font-size: 1.8rem !important;
         font-weight: 700 !important;
     }
 
-    h3 {
+    h2 {
         font-size: 1.35rem !important;
         font-weight: 700 !important;
-        margin-top: 1rem !important;
-        margin-bottom: 0.5rem !important;
+    }
+
+    h3 {
+        font-size: 1.02rem !important;
+        font-weight: 850 !important;
+        margin-top: 0.45rem !important;
+        margin-bottom: 0.35rem !important;
+        color: #0f172a !important;
+        letter-spacing: 0 !important;
+    }
+
+    h4 {
+        font-size: 0.92rem !important;
+        font-weight: 800 !important;
+        margin-top: 0.45rem !important;
+        margin-bottom: 0.28rem !important;
+        color: #334155 !important;
     }
 
     .stMetric {
-        border-radius: 12px;
-        padding: 8px;
+        border-radius: 8px;
+        padding: 0;
     }
 
     div[data-testid="metric-container"] {
-        background-color: rgba(250,250,250,0.03);
-        border: 1px solid rgba(255,255,255,0.08);
-        padding: 4px 8px;
-        border-radius: 10px;
+        background-color: #ffffff;
+        border: 1px solid #e5eaf1;
+        padding: 8px 10px;
+        border-radius: 8px;
+        min-height: 82px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
     
     div[data-testid="stVerticalBlock"] {
-        gap: 0.05rem !important;
+        gap: 0.18rem !important;
     }
     
     div[data-testid="metric-container"] > label {
@@ -69,11 +82,14 @@ st.markdown(
     }
 
     div[data-testid="metric-container"] [data-testid="stMetricValue"] {
-        font-size: 1.1rem !important;
+        font-size: 1.02rem !important;
+        line-height: 1.12 !important;
     }
 
     div[data-testid="metric-container"] [data-testid="stMetricLabel"] {
-        font-size: 0.75rem !important;
+        font-size: 0.68rem !important;
+        font-weight: 750 !important;
+        color: #64748b !important;
     }
     div.stButton > button {
     background-color: #4b5563;
@@ -89,48 +105,53 @@ st.markdown(
     """
     <style>
     .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 2rem;
+        padding-top: 0.75rem;
+        padding-bottom: 1.2rem;
+        padding-left: 2.1rem;
+        padding-right: 2.1rem;
         max-width: 1600px;
     }
 
     h1 {
-        font-size: 34px !important;
-        margin-bottom: 0.2rem !important;
+        font-size: 30px !important;
+        margin-bottom: 0.08rem !important;
     }
 
     .fp-card {
         background: #ffffff;
-        border-radius: 16px;
-        padding: 16px 14px;
-        min-height: 138px;
-        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+        border-radius: 8px;
+        padding: 10px 11px;
+        min-height: 94px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
         border: 1px solid #e5eaf1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
     .fp-label {
-        font-size: 11px;
+        font-size: 10px;
         color: #64748b;
-        margin-bottom: 8px;
+        margin-bottom: 5px;
         font-weight: 800;
-        letter-spacing: .3px;
+        letter-spacing: 0;
         text-transform: uppercase;
         white-space: nowrap;
     }
 
     .fp-value {
-        font-size: 25px;
+        font-size: 20px;
         line-height: 1.15;
         font-weight: 850;
         color: #0f172a;
-        letter-spacing: -0.8px;
+        letter-spacing: 0;
         word-break: keep-all;
     }
 
     .fp-sub {
-        margin-top: 9px;
-        font-size: 12px;
-        line-height: 1.35;
+        margin-top: 5px;
+        font-size: 10.5px;
+        line-height: 1.25;
         color: #64748b;
     }
 
@@ -145,24 +166,56 @@ st.markdown(
     }
 
     .section-title {
-        font-size: 18px;
+        font-size: 14px;
         font-weight: 800;
         color: #0f172a;
-        margin-bottom: 10px;
-        letter-spacing: -0.2px;
+        margin: 0.45rem 0 0.35rem 0;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        border-left: 3px solid #38bdf8;
+        padding-left: 8px;
     }
 
     div[data-testid="stMetric"] {
         background: white;
-        padding: 16px;
-        border-radius: 16px;
+        padding: 8px;
+        border-radius: 8px;
         border: 1px solid #e5eaf1;
     }
 
     [data-testid="stDataFrame"] {
-        border-radius: 16px;
+        border-radius: 8px;
         overflow: hidden;
         border: 1px solid #e5eaf1;
+    }
+
+    hr {
+        margin: 0.45rem 0 !important;
+        opacity: 0.35;
+    }
+
+    div[data-testid="stHorizontalBlock"] {
+        gap: 0.45rem !important;
+    }
+
+    div[data-testid="stExpander"] {
+        border-radius: 8px !important;
+        margin-bottom: 0.35rem !important;
+    }
+
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 0.8rem;
+            padding-right: 0.8rem;
+        }
+
+        .fp-card {
+            min-height: 84px;
+        }
+
+        .fp-value {
+            font-size: 18px;
+        }
     }
     </style>
     """,
@@ -433,45 +486,22 @@ st.caption(
     "Personal Fund Awareness System · Local MVP · TEFAS + SQLite"
 )
 
-st.markdown(
-    "<h3 style='color:#22c55e;'>🌍 K00 · Market Pulse</h3>",
-    unsafe_allow_html=True,
-)
+render_section_header("K00 · Market Pulse")
 
-pulse_row1 = st.columns(6)
-
-items_row1 = [
+pulse_items = [
     ("USD/TRY", "USDTRY"),
     ("EUR/TRY", "EURTRY"),
     ("Altın", "GOLD"),
     ("DXY", "DXY"),
     ("SP500", "SP500"),
     ("BTC", "BTC"),
-]
-
-for col, (label, key) in zip(pulse_row1, items_row1):
-
-    data = market_pulse.get(
-        key,
-        {"price": 0, "change_pct": 0},
-    )
-
-    with col:
-
-        st.metric(
-            label,
-            format_tr_number(data["price"]),
-            format_tr_percent(data["change_pct"]),
-        )
-
-pulse_row2 = st.columns(3)
-
-items_row2 = [
     ("QQQM", "QQQM"),
     ("SOXQ", "SOXQ"),
 ]
 
-for col, (label, key) in zip(pulse_row2, items_row2):
+pulse_cols = st.columns(9)
+
+for col, (label, key) in zip(pulse_cols[:8], pulse_items):
 
     data = market_pulse.get(
         key,
@@ -486,7 +516,7 @@ for col, (label, key) in zip(pulse_row2, items_row2):
             format_tr_percent(data["change_pct"]),
         )
 
-with pulse_row2[2]:
+with pulse_cols[8]:
 
     st.metric(
         risk_appetite["regime"],
@@ -500,7 +530,7 @@ st.caption(
 
 st.divider()
 
-st.markdown("### K01-K06 · Portfolio Overview")
+render_section_header("K01-K06 · Portfolio Overview")
 
 c1, c2, c3, c4, c5, c6 = st.columns(6)
 
@@ -1227,95 +1257,54 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown("#### K12A · Demo Position Selector")
-
-quick_update_df = df[
-    [
-        "fund_code",
-        "units",
-        "avg_cost",
-        "target_weight",
-    ]
-].copy()
-
-selected_update_fund = st.selectbox(
-    "Fon Seç",
-    quick_update_df["fund_code"].tolist(),
-    key="quick_update_selectbox",
-)
-
-selected_row = quick_update_df[
-    quick_update_df["fund_code"] == selected_update_fund
-].iloc[0]
-
-
 st.caption(
     "Demo repository is read-only. Position edit, delete, TEFAS refresh, and metadata writes are not available."
 )
 
-st.markdown("#### K12B · Selected Position Intelligence")
-
-selected_detail = df[
-    df["fund_code"] == selected_update_fund
-].iloc[0]
-
-
-
-si1, si2, si3, si4, si5 = st.columns(5)
-
-with si1:
-    st.metric(
-        "Güncel Değer",
-        f"{selected_detail['current_value']:,.0f} TL",
-    )
-
-with si2:
-    st.metric(
-        "Portföy Ağırlığı",
-        f"%{selected_detail['actual_weight']:.1f}",
-    )
-
-with si3:
-    st.metric(
-        "Risk Değeri",
-        int(selected_detail["risk_value"]),
-    )
-
-with si4:
-    st.metric(
-        "USD Exposure",
-        f"%{selected_detail['currency_exposure_usd']}",
-    )
-
-with si5:
-    st.metric(
-        "Tema",
-        selected_detail["theme_primary"],
-    )
-
-
-
-
-st.caption(
-    f"{selected_update_fund} · "
-    f"{selected_detail['theme_primary']} / {selected_detail['theme_secondary']} · "
-    f"Son Fiyat: {selected_detail['price']} · "
-    f"Tarih: {selected_detail['price_date']}"
+detail_options = df["fund_code"].astype(str).tolist()
+detail_name_map = (
+    df.set_index("fund_code")["fund_name"].astype(str).to_dict()
+    if "fund_name" in df.columns
+    else {}
 )
+
+detail_select_col, detail_action_col = st.columns([2.5, 1])
+
+with detail_select_col:
+    selected_detail_fund = st.selectbox(
+        "Tablodan detay için fon seç",
+        detail_options,
+        format_func=lambda code: (
+            f"{code} - {detail_name_map.get(code, code)}"
+        ),
+        key="k12_detail_selectbox",
+    )
+
+with detail_action_col:
+    st.write("")
+    st.write("")
+    open_detail_dialog = st.button(
+        "Detay Penceresini Aç",
+        key="k12_open_detail_dialog",
+        use_container_width=True,
+    )
+
+if open_detail_dialog:
+    selected_dialog_rows = df[
+        df["fund_code"].astype(str) == str(selected_detail_fund)
+    ]
+    if not selected_dialog_rows.empty:
+        render_fund_detail_dialog(selected_dialog_rows.iloc[0])
 
 display_df = df[
     [
         "fund_code",
         "currency",
-        "units",
-        "avg_cost",
-        "price",
         "current_value",
         "pnl",
         "return_pct",
         "actual_weight",
         "daily_return_pct",
-        "daily_pnl",    
     ]
 ].copy()
 
@@ -1324,24 +1313,12 @@ display_df = display_df.rename(
     columns={
         "fund_code": "Fon",
         "currency": "Kur",
-        "units": "Adet",
-        "avg_cost": "Ort. Maliyet",
-        "price": "Güncel Fiyat",
         "current_value": "Güncel Değer",
         "pnl": "K/Z",
         "return_pct": "Getiri %",
         "actual_weight": "Ağırlık %",
-        "daily_return_pct": "Günlük Getiri %",
-        "daily_pnl": "Günlük K/Z",
+        "daily_return_pct": "Günlük %",
     }
-)
-
-display_df["Adet"] = display_df["Adet"].map(
-    lambda x: f"{x:,.0f}"
-)
-
-display_df["Ort. Maliyet"] = display_df["Ort. Maliyet"].map(
-    lambda x: f"{x:,.6f}"
 )
 
 for col in [
@@ -1349,8 +1326,7 @@ for col in [
     "K/Z",
     "Getiri %",
     "Ağırlık %",
-    "Günlük Getiri %",
-    "Günlük K/Z",
+    "Günlük %",
 ]:
 
     display_df[col] = display_df[col].map(
@@ -1361,14 +1337,11 @@ st.dataframe(
     
     display_df.style.set_properties(
         subset=[
-            "Adet",
-            "Ort. Maliyet",
             "Güncel Değer",
             "K/Z",
             "Getiri %",
             "Ağırlık %",
-            "Günlük Getiri %",
-            "Günlük K/Z",
+            "Günlük %",
         ],
         **{"text-align": "right"},
     ).map(
@@ -1376,80 +1349,9 @@ st.dataframe(
         subset=[
             "K/Z",
             "Getiri %",
-            "Günlük Getiri %",
-            "Günlük K/Z",
+            "Günlük %",
         ],
-    
-    
     ),
     use_container_width=True,
     hide_index=True,
 )
-st.markdown("#### Fon Detay Panelleri")
-
-for _, row in df.iterrows():
-
-    with st.expander(
-        f"{row['fund_code']} · {row['theme_primary']} / {row['theme_secondary']}",
-        expanded=False,
-    ):
-
-        c1, c2, c3, c4 = st.columns(4)
-
-        with c1:     
-            
-            risk_value_display = (
-                int(row["risk_value"])
-                if pd.notna(row["risk_value"])
-                else "Metadata yok"
-            )
-
-            st.metric("Risk Değeri", risk_value_display)
-            
-              
-                        
-            sell_value_display = (
-                f"T+{int(row['sell_value'])}"
-                if pd.notna(row["sell_value"])
-                else "Metadata yok"
-            )
-
-            st.metric("Satış Valörü", sell_value_display)            
-            
-        with c2:
-            st.metric("USD Exposure", f"%{row['currency_exposure_usd']}")
-            st.metric("EUR Exposure", f"%{row['currency_exposure_eur']}")
-
-        with c3:
-            st.metric("Hisse Exposure", f"%{row['equity_exposure']}")
-            st.metric("Yabancı Hisse", f"%{row['foreign_equity_exposure']}")
-
-        with c4:
-            st.metric("Teknoloji", f"%{row['technology_exposure']}")
-            st.metric("Para Piyasası", f"%{row['money_market_exposure']}")
-
-        st.markdown("**FONPILOT Yorumu**")
-
-        if row["currency_exposure_usd"] >= 70:
-            st.write(
-                "Bu fon portföyde güçlü USD/yabancı varlık etkisi yaratıyor. "
-                "Kur hareketleri fon performansını belirgin şekilde etkileyebilir."
-            )
-
-        elif row["equity_exposure"] >= 80:
-            st.write(
-                "Bu fon hisse yoğun yapıda. Getiri potansiyeli yüksek olabilir; "
-                "ancak kısa vadeli oynaklık ve davranışsal baskı artabilir."
-            )
-
-        elif row["money_market_exposure"] >= 30:
-            st.write(
-                "Bu fon portföyde daha defansif ve likit bir rol üstleniyor. "
-                "Stres dönemlerinde tampon etkisi sağlayabilir."
-            )
-
-        else:
-            st.write(
-                "Bu fon portföyde karma veya destekleyici rol üstleniyor. "
-                "Tema, kur ve likidite etkileri diğer fonlarla birlikte değerlendirilmelidir."
-            )
