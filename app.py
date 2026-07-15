@@ -13,6 +13,7 @@ from src.market_data_engine import get_market_pulse
 from ui.components import render_section_header
 from ui.pages.dashboard_sections import render_portfolio_change_tracker
 from ui.pages.fund_explorer import render_fund_detail_dialog
+from ui.pages.navigation_shell import render_main_navigation
 
 METADATA_PATH = METADATA_CSV_PATH
 
@@ -72,11 +73,11 @@ st.markdown(
         min-height: 82px;
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     }
-    
+
     div[data-testid="stVerticalBlock"] {
         gap: 0.18rem !important;
     }
-    
+
     div[data-testid="metric-container"] > label {
         margin-bottom: 0px !important;
     }
@@ -96,7 +97,7 @@ st.markdown(
     color: white;
     border: 1px solid #6b7280;
     }
-    
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -486,872 +487,881 @@ st.caption(
     "Personal Fund Awareness System · Local MVP · TEFAS + SQLite"
 )
 
-render_section_header("K00 · Market Pulse")
+selected_page = render_main_navigation(is_demo_mode=IS_DEMO_MODE)
 
-pulse_items = [
-    ("USD/TRY", "USDTRY"),
-    ("EUR/TRY", "EURTRY"),
-    ("Altın", "GOLD"),
-    ("DXY", "DXY"),
-    ("SP500", "SP500"),
-    ("BTC", "BTC"),
-    ("QQQM", "QQQM"),
-    ("SOXQ", "SOXQ"),
-]
+if selected_page == "Overview":
+    render_section_header("K00 · Market Pulse")
 
-pulse_cols = st.columns(9)
-
-for col, (label, key) in zip(pulse_cols[:8], pulse_items):
-
-    data = market_pulse.get(
-        key,
-        {"price": 0, "change_pct": 0},
-    )
-
-    with col:
-
-        st.metric(
-            label,
-            format_tr_number(data["price"]),
-            format_tr_percent(data["change_pct"]),
-        )
-
-with pulse_cols[8]:
-
-    st.metric(
-        risk_appetite["regime"],
-        f"%{risk_appetite['score']}",
-        "Risk İştahı",
-    )
-
-st.caption(
-    f"Kaynak: Yahoo Finance | Son Güncelleme: {market_pulse['updated_at']}"
-)
-
-st.divider()
-
-render_section_header("K01-K06 · Portfolio Overview")
-
-c1, c2, c3, c4, c5, c6 = st.columns(6)
-
-pnl_class = "green" if total_pnl >= 0 else "red"
-daily_pnl_class = "green" if daily_pnl_total >= 0 else "red"
-daily_return_class = "green" if daily_return_total >= 0 else "red"
-
-with c1:
-    st.markdown(
-        f"""
-        <div class="fp-card">
-            <div class="fp-label">K01 · Güncel Değer</div>
-            <div class="fp-value">{format_try(total_value)}</div>
-            <div class="fp-sub">
-                Güncel TEFAS değeri
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with c2:
-    st.markdown(
-        f"""
-        <div class="fp-card">
-            <div class="fp-label">K02 · Toplam K/Z</div>
-            <div class="fp-value {pnl_class}">
-                {format_try(total_pnl)}
-            </div>
-            <div class="fp-sub">
-                %{total_return:.2f}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with c3:
-    st.markdown(
-        f"""
-        <div class="fp-card">
-            <div class="fp-label">K03 · Fon Sayısı</div>
-            <div class="fp-value">{len(df)}</div>
-            <div class="fp-sub">
-                TL: {tl_funds} · USD: {usd_funds}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with c4:
-    st.markdown(
-        f"""
-        <div class="fp-card">
-            <div class="fp-label">K04 · Pozitif Fon</div>
-            <div class="fp-value green">{positive_count}</div>
-            <div class="fp-sub">
-                Negatif: {negative_count}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with c5:
-    st.markdown(
-        f"""
-        <div class="fp-card">
-            <div class="fp-label">K05 · Günlük Getiri</div>
-            <div class="fp-value {daily_return_class}">
-                %{daily_return_total:.2f}
-            </div>
-            <div class="fp-sub">
-                Portföy günlük değişim
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with c6:
-    st.markdown(
-        f"""
-        <div class="fp-card">
-            <div class="fp-label">K06 · Günlük K/Z</div>
-            <div class="fp-value {daily_pnl_class}">
-                {format_try(daily_pnl_total)}
-            </div>
-            <div class="fp-sub">
-                Son fiyat değişimi
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-st.divider()
-
-st.markdown(
-    "<h3 style='color:#38bdf8;'>📡 Portföy Rejimi</h3>",
-    unsafe_allow_html=True,
-)
-
-regime_cols = st.columns(4)
-
-with regime_cols[0]:
-    st.metric(
-        "Rejim",
-        portfolio_regime["regime_name"],
-    )
-
-with regime_cols[1]:
-    st.metric(
-        "Skor",
-        portfolio_regime["score"],
-    )
-
-with regime_cols[2]:
-    st.metric(
-        "Ana Sürücü",
-        portfolio_regime["driver"],
-    )
-
-with regime_cols[3]:
-    st.metric(
-        "Makro Hassasiyet",
-        portfolio_regime["macro_sensitivity"],
-    )
-
-render_section_header("K11 · Exposure Engine")
-
-exp_cols = st.columns(8)
-
-for col, (label, data) in zip(exp_cols, exposure_summary.items()):
-
-    value = data["value"]
-    level = data["level"]
-
-    if value >= 60:
-        delta_color = "inverse"
-    elif value >= 30:
-        delta_color = "off"
-    else:
-        delta_color = "normal"
-
-    with col:
-        st.metric(
-            label,
-            f"%{value}",
-            level,
-            delta_color=delta_color,
-        )
-
-st.divider()
-
-
-
-st.markdown("### K11A · Historical Snapshot Trend")
-
-st.info("Demo repository is read-only. Snapshot save is disabled.")
-    
-if "snapshot_message" in st.session_state:
-
-    st.success(st.session_state["snapshot_message"])
-
-    del st.session_state["snapshot_message"]
-
-if len(snapshots_df) >= 1:
-
-    latest_snapshot_summary = snapshots_df.iloc[-1]
-
-    ss1, ss2 = st.columns(2)
-
-    with ss1:
-        st.metric(
-            "Son Snapshot",
-            latest_snapshot_summary["snapshot_date"],
-        )
-
-    with ss2:
-        st.metric(
-            "Snapshot Sayısı",
-            len(snapshots_df),
-        )
-
-
-if len(snapshots_df) >= 1:
-
-    trend_cols = st.columns(4)
-
-    latest_snapshot = snapshots_df.iloc[-1]
-
-    with trend_cols[0]:
-        st.metric(
-            "Risk Skoru",
-            f"{latest_snapshot['risk_score']}/100",
-        )
-
-    with trend_cols[1]:
-        st.metric(
-            "USD Exposure",
-            f"%{latest_snapshot['usd_exposure']}",
-        )
-
-    with trend_cols[2]:
-        st.metric(
-            "Hisse Exposure",
-            f"%{latest_snapshot['equity_exposure']}",
-        )
-
-    with trend_cols[3]:
-        st.metric(
-            "Likidite",
-            f"{latest_snapshot['liquidity_score']}/100",
-        )
-
-    trend_df = snapshots_df.copy()
-
-    trend_df["snapshot_date"] = pd.to_datetime(
-        trend_df["snapshot_date"]
-    )
-
-    range_choice = st.radio(
-        "Trend Aralığı",
-        ["1 Gün", "3 Ay", "6 Ay", "12 Ay"],
-        horizontal=True,
-        key="snapshot_trend_range",
-    )
-
-    today = pd.Timestamp.today().normalize()
-
-    range_days = {
-        "1 Gün": 1,
-        "3 Ay": 90,
-        "6 Ay": 180,
-        "12 Ay": 365,
-    }
-
-    start_date = today - pd.Timedelta(
-        days=range_days[range_choice]
-    )
-
-    filtered_trend_df = trend_df[
-        trend_df["snapshot_date"] >= start_date
+    pulse_items = [
+        ("USD/TRY", "USDTRY"),
+        ("EUR/TRY", "EURTRY"),
+        ("Altın", "GOLD"),
+        ("DXY", "DXY"),
+        ("SP500", "SP500"),
+        ("BTC", "BTC"),
+        ("QQQM", "QQQM"),
+        ("SOXQ", "SOXQ"),
     ]
 
-    fig = px.line(
-        filtered_trend_df,
-        x="snapshot_date",
-        y=[
-            "risk_score",
-            "usd_exposure",
-            "equity_exposure",
-            "volatility_score",
-        ],
-        markers=True,
-    )
+    pulse_cols = st.columns(9)
 
-    fig.update_layout(
-        height=320,
-        margin=dict(l=0, r=0, t=20, b=0),
-        xaxis_title=None,
-        yaxis_title=None,
-        legend_title=None,
-    )
+    for col, (label, key) in zip(pulse_cols[:8], pulse_items):
 
-    fig.update_xaxes(
-        tickformat="%d.%m.%Y",
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-    )
-    
-else:
-    st.info("Henüz yeterli snapshot verisi yok.")
-
-st.divider()
-
-left, right = st.columns([1, 1])
-
-with left:
-
-    st.markdown(
-        '<div class="section-title">K09 · Portföy Dağılımı</div>',
-        unsafe_allow_html=True,
-    )
-
-    fig = px.pie(
-        df,
-        names="fund_code",
-        values="current_value",
-        hole=0.55,
-    )
-
-    fig.update_layout(
-        height=420,
-        margin=dict(l=0, r=0, t=0, b=0),
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-    )
-
-with right:
-
-    st.markdown(
-        '<div class="section-title">K10 · Fon Bazlı K/Z</div>',
-        unsafe_allow_html=True,
-    )
-
-    fig = px.bar(
-        df,
-        x="fund_code",
-        y="pnl",
-        text="return_pct",
-    )
-
-    fig.update_traces(
-        texttemplate="%{text:.1f}%",
-        textposition="outside",
-    )
-
-    fig.update_layout(
-        height=420,
-        margin=dict(l=0, r=0, t=0, b=0),
-    )
-
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-    )
-
-st.divider()
-
-st.markdown(
-    "<h3 style='color:#ef4444;'>⚠️ K07 · Risk Intelligence Center</h3>",
-    unsafe_allow_html=True,
-)
-
-risk_main, r1, r2, r3, r4, r5 = st.columns([1.4, 1, 1, 1, 1, 1])
-
-with risk_main:
-    st.metric(
-        "Genel Risk Skoru",
-        f"{overall_risk_score}/100",
-        overall_risk_level,
-    )
-
-component_list = list(risk_components.values())
-
-for col, item in zip([r1, r2, r3, r4, r5], component_list):
-    with col:
-        st.metric(
-            item["label"],
-            f"{item['score']}/100",
-            item["level"],
+        data = market_pulse.get(
+            key,
+            {"price": 0, "change_pct": 0},
         )
 
-st.markdown("#### Risk Insight Feed")
+        with col:
 
-for item in component_list:
-    if item["score"] >= 75:
-        icon = "🔴"
-    elif item["score"] >= 55:
-        icon = "🟠"
-    elif item["score"] >= 35:
-        icon = "🟡"
-    else:
-        icon = "🟢"
+            st.metric(
+                label,
+                format_tr_number(data["price"]),
+                format_tr_percent(data["change_pct"]),
+            )
 
-    with st.expander(
-        f"{icon} {item['label']} · {item['score']}/100 · {item['level']}",
-        expanded=item["score"] >= 75,
-    ):
-        st.write(f"**Durum:** {item['main_metric']}")
-        st.write(item["reason"])
+    with pulse_cols[8]:
 
-st.divider()
+        st.metric(
+            risk_appetite["regime"],
+            f"%{risk_appetite['score']}",
+            "Risk İştahı",
+        )
 
-st.markdown("### K07A · Theme Concentration Engine")
+    st.caption(
+        f"Kaynak: Yahoo Finance | Son Güncelleme: {market_pulse['updated_at']}"
+    )
 
-theme_cols = st.columns(4)
+    st.divider()
 
-for idx, item in enumerate(theme_data):
+    render_section_header("K01-K06 · Portfolio Overview")
 
-    col = theme_cols[idx % 4]
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
 
-    with col:
+    pnl_class = "green" if total_pnl >= 0 else "red"
+    daily_pnl_class = "green" if daily_pnl_total >= 0 else "red"
+    daily_return_class = "green" if daily_return_total >= 0 else "red"
 
-        risk_effect = item["risk_effect"]
+    with c1:
+        st.markdown(
+            f"""
+            <div class="fp-card">
+                <div class="fp-label">K01 · Güncel Değer</div>
+                <div class="fp-value">{format_try(total_value)}</div>
+                <div class="fp-sub">
+                    Güncel TEFAS değeri
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        if risk_effect == "Yüksek":
+    with c2:
+        st.markdown(
+            f"""
+            <div class="fp-card">
+                <div class="fp-label">K02 · Toplam K/Z</div>
+                <div class="fp-value {pnl_class}">
+                    {format_try(total_pnl)}
+                </div>
+                <div class="fp-sub">
+                    %{total_return:.2f}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with c3:
+        st.markdown(
+            f"""
+            <div class="fp-card">
+                <div class="fp-label">K03 · Fon Sayısı</div>
+                <div class="fp-value">{len(df)}</div>
+                <div class="fp-sub">
+                    TL: {tl_funds} · USD: {usd_funds}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with c4:
+        st.markdown(
+            f"""
+            <div class="fp-card">
+                <div class="fp-label">K04 · Pozitif Fon</div>
+                <div class="fp-value green">{positive_count}</div>
+                <div class="fp-sub">
+                    Negatif: {negative_count}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with c5:
+        st.markdown(
+            f"""
+            <div class="fp-card">
+                <div class="fp-label">K05 · Günlük Getiri</div>
+                <div class="fp-value {daily_return_class}">
+                    %{daily_return_total:.2f}
+                </div>
+                <div class="fp-sub">
+                    Portföy günlük değişim
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with c6:
+        st.markdown(
+            f"""
+            <div class="fp-card">
+                <div class="fp-label">K06 · Günlük K/Z</div>
+                <div class="fp-value {daily_pnl_class}">
+                    {format_try(daily_pnl_total)}
+                </div>
+                <div class="fp-sub">
+                    Son fiyat değişimi
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+    st.divider()
+
+if selected_page == "Macro":
+    st.markdown(
+        "<h3 style='color:#38bdf8;'>📡 Portföy Rejimi</h3>",
+        unsafe_allow_html=True,
+    )
+
+    regime_cols = st.columns(4)
+
+    with regime_cols[0]:
+        st.metric(
+            "Rejim",
+            portfolio_regime["regime_name"],
+        )
+
+    with regime_cols[1]:
+        st.metric(
+            "Skor",
+            portfolio_regime["score"],
+        )
+
+    with regime_cols[2]:
+        st.metric(
+            "Ana Sürücü",
+            portfolio_regime["driver"],
+        )
+
+    with regime_cols[3]:
+        st.metric(
+            "Makro Hassasiyet",
+            portfolio_regime["macro_sensitivity"],
+        )
+
+if selected_page == "Exposure":
+    render_section_header("K11 · Exposure Engine")
+
+    exp_cols = st.columns(8)
+
+    for col, (label, data) in zip(exp_cols, exposure_summary.items()):
+
+        value = data["value"]
+        level = data["level"]
+
+        if value >= 60:
             delta_color = "inverse"
-        elif risk_effect == "Orta":
+        elif value >= 30:
             delta_color = "off"
-        elif risk_effect == "Koruyucu":
-            delta_color = "normal"
         else:
             delta_color = "normal"
 
-        st.metric(
-            item["theme"],
-            f"%{item['value']}",
-            risk_effect,
-            delta_color=delta_color,
+        with col:
+            st.metric(
+                label,
+                f"%{value}",
+                level,
+                delta_color=delta_color,
+            )
+
+    st.divider()
+
+if selected_page == "History":
+    st.markdown("### K11A · Historical Snapshot Trend")
+
+    st.info("Demo repository is read-only. Snapshot save is disabled.")
+
+    if "snapshot_message" in st.session_state:
+
+        st.success(st.session_state["snapshot_message"])
+
+        del st.session_state["snapshot_message"]
+
+    if len(snapshots_df) >= 1:
+
+        latest_snapshot_summary = snapshots_df.iloc[-1]
+
+        ss1, ss2 = st.columns(2)
+
+        with ss1:
+            st.metric(
+                "Son Snapshot",
+                latest_snapshot_summary["snapshot_date"],
+            )
+
+        with ss2:
+            st.metric(
+                "Snapshot Sayısı",
+                len(snapshots_df),
+            )
+
+
+    if len(snapshots_df) >= 1:
+
+        trend_cols = st.columns(4)
+
+        latest_snapshot = snapshots_df.iloc[-1]
+
+        with trend_cols[0]:
+            st.metric(
+                "Risk Skoru",
+                f"{latest_snapshot['risk_score']}/100",
+            )
+
+        with trend_cols[1]:
+            st.metric(
+                "USD Exposure",
+                f"%{latest_snapshot['usd_exposure']}",
+            )
+
+        with trend_cols[2]:
+            st.metric(
+                "Hisse Exposure",
+                f"%{latest_snapshot['equity_exposure']}",
+            )
+
+        with trend_cols[3]:
+            st.metric(
+                "Likidite",
+                f"{latest_snapshot['liquidity_score']}/100",
+            )
+
+        trend_df = snapshots_df.copy()
+
+        trend_df["snapshot_date"] = pd.to_datetime(
+            trend_df["snapshot_date"]
         )
 
+        range_choice = st.radio(
+            "Trend Aralığı",
+            ["1 Gün", "3 Ay", "6 Ay", "12 Ay"],
+            horizontal=True,
+            key="snapshot_trend_range",
+        )
 
+        today = pd.Timestamp.today().normalize()
 
-st.markdown(
-    "<h3 style='color:#a855f7;'>🧠 K10A · Performance Attribution Engine</h3>",
-    unsafe_allow_html=True,
-)
+        range_days = {
+            "1 Gün": 1,
+            "3 Ay": 90,
+            "6 Ay": 180,
+            "12 Ay": 365,
+        }
 
-attr_left, attr_right = st.columns([0.9, 1.3])
+        start_date = today - pd.Timedelta(
+            days=range_days[range_choice]
+        )
 
-with attr_left:
+        filtered_trend_df = trend_df[
+            trend_df["snapshot_date"] >= start_date
+        ]
 
-    attr_df = pd.DataFrame(
-        attribution_data["items"]
+        fig = px.line(
+            filtered_trend_df,
+            x="snapshot_date",
+            y=[
+                "risk_score",
+                "usd_exposure",
+                "equity_exposure",
+                "volatility_score",
+            ],
+            markers=True,
+        )
+
+        fig.update_layout(
+            height=320,
+            margin=dict(l=0, r=0, t=20, b=0),
+            xaxis_title=None,
+            yaxis_title=None,
+            legend_title=None,
+        )
+
+        fig.update_xaxes(
+            tickformat="%d.%m.%Y",
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+        )
+
+    else:
+        st.info("Henüz yeterli snapshot verisi yok.")
+
+    st.divider()
+
+if selected_page == "Exposure":
+    left, right = st.columns([1, 1])
+
+    with left:
+
+        st.markdown(
+            '<div class="section-title">K09 · Portföy Dağılımı</div>',
+            unsafe_allow_html=True,
+        )
+
+        fig = px.pie(
+            df,
+            names="fund_code",
+            values="current_value",
+            hole=0.55,
+        )
+
+        fig.update_layout(
+            height=420,
+            margin=dict(l=0, r=0, t=0, b=0),
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+        )
+
+    with right:
+
+        st.markdown(
+            '<div class="section-title">K10 · Fon Bazlı K/Z</div>',
+            unsafe_allow_html=True,
+        )
+
+        fig = px.bar(
+            df,
+            x="fund_code",
+            y="pnl",
+            text="return_pct",
+        )
+
+        fig.update_traces(
+            texttemplate="%{text:.1f}%",
+            textposition="outside",
+        )
+
+        fig.update_layout(
+            height=420,
+            margin=dict(l=0, r=0, t=0, b=0),
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+        )
+
+    st.divider()
+
+if selected_page == "Risk":
+    st.markdown(
+        "<h3 style='color:#ef4444;'>⚠️ K07 · Risk Intelligence Center</h3>",
+        unsafe_allow_html=True,
     )
 
-    st.bar_chart(
-        attr_df.set_index("label"),
-        height=240,
-    )
+    risk_main, r1, r2, r3, r4, r5 = st.columns([1.4, 1, 1, 1, 1, 1])
 
-with attr_right:
+    with risk_main:
+        st.metric(
+            "Genel Risk Skoru",
+            f"{overall_risk_score}/100",
+            overall_risk_level,
+        )
 
-    st.caption("Attribution Insight")
-    st.info(attribution_data["insight"])
+    component_list = list(risk_components.values())
 
-    compact_cols = st.columns(len(attribution_data["items"]))
-
-    for col, item in zip(compact_cols, attribution_data["items"]):
+    for col, item in zip([r1, r2, r3, r4, r5], component_list):
         with col:
             st.metric(
                 item["label"],
-                f"%{item['weight']}",
+                f"{item['score']}/100",
+                item["level"],
             )
 
-st.divider()
+    st.markdown("#### Risk Insight Feed")
 
-st.markdown(
-    "<h3 style='color:#f59e0b;'>🔮 K16 · Macro Scenario Simulator</h3>",
-    unsafe_allow_html=True,
-)
+    for item in component_list:
+        if item["score"] >= 75:
+            icon = "🔴"
+        elif item["score"] >= 55:
+            icon = "🟠"
+        elif item["score"] >= 35:
+            icon = "🟡"
+        else:
+            icon = "🟢"
 
-scenario_col1, scenario_col2 = st.columns(2)
+        with st.expander(
+            f"{icon} {item['label']} · {item['score']}/100 · {item['level']}",
+            expanded=item["score"] >= 75,
+        ):
+            st.write(f"**Durum:** {item['main_metric']}")
+            st.write(item["reason"])
 
-with scenario_col1:
+    st.divider()
 
-    selected_scenario = st.selectbox(
-        "Senaryo",
-        [
-            "USD Forecast",
-            "Gold Forecast",
-            "Nasdaq Forecast",
-            "BIST Forecast",
-        ],
-        key="macro_scenario_select",
+if selected_page == "Exposure":
+    st.markdown("### K07A · Theme Concentration Engine")
+
+    theme_cols = st.columns(4)
+
+    for idx, item in enumerate(theme_data):
+
+        col = theme_cols[idx % 4]
+
+        with col:
+
+            risk_effect = item["risk_effect"]
+
+            if risk_effect == "Yüksek":
+                delta_color = "inverse"
+            elif risk_effect == "Orta":
+                delta_color = "off"
+            elif risk_effect == "Koruyucu":
+                delta_color = "normal"
+            else:
+                delta_color = "normal"
+
+            st.metric(
+                item["theme"],
+                f"%{item['value']}",
+                risk_effect,
+                delta_color=delta_color,
+            )
+
+
+
+    st.markdown(
+        "<h3 style='color:#a855f7;'>🧠 K10A · Performance Attribution Engine</h3>",
+        unsafe_allow_html=True,
     )
 
-with scenario_col2:
+    attr_left, attr_right = st.columns([0.9, 1.3])
 
-    shock_percent = st.slider(
-        "Forecast (%)",
-        min_value=-30,
-        max_value=30,
-        value=10,
-        step=1,
-        key="macro_scenario_slider",
+    with attr_left:
+
+        attr_df = pd.DataFrame(
+            attribution_data["items"]
+        )
+
+        st.bar_chart(
+            attr_df.set_index("label"),
+            height=240,
+        )
+
+    with attr_right:
+
+        st.caption("Attribution Insight")
+        st.info(attribution_data["insight"])
+
+        compact_cols = st.columns(len(attribution_data["items"]))
+
+        for col, item in zip(compact_cols, attribution_data["items"]):
+            with col:
+                st.metric(
+                    item["label"],
+                    f"%{item['weight']}",
+                )
+
+    st.divider()
+
+if selected_page == "Macro":
+    st.markdown(
+        "<h3 style='color:#f59e0b;'>🔮 K16 · Macro Scenario Simulator</h3>",
+        unsafe_allow_html=True,
     )
 
-scenario_result = run_macro_scenario(
-    selected_scenario,
-    shock_percent,
-)
+    scenario_col1, scenario_col2 = st.columns(2)
 
-scenario_drivers_df = calculate_scenario_drivers(
-    selected_scenario,
-    shock_percent,
-)
+    with scenario_col1:
 
-sr1, sr2 = st.columns(2)
+        selected_scenario = st.selectbox(
+            "Senaryo",
+            [
+                "USD Forecast",
+                "Gold Forecast",
+                "Nasdaq Forecast",
+                "BIST Forecast",
+            ],
+            key="macro_scenario_select",
+        )
 
-with sr1:
+    with scenario_col2:
 
-    st.metric(
-        "Tahmini Etki (%)",
-        f"%{scenario_result['estimated_impact_pct']}",
+        shock_percent = st.slider(
+            "Forecast (%)",
+            min_value=-30,
+            max_value=30,
+            value=10,
+            step=1,
+            key="macro_scenario_slider",
+        )
+
+    scenario_result = run_macro_scenario(
+        selected_scenario,
+        shock_percent,
     )
 
-with sr2:
-
-    st.metric(
-        "Tahmini Etki (TL)",
-        f"{scenario_result['estimated_impact_tl']:,.0f} TL",
+    scenario_drivers_df = calculate_scenario_drivers(
+        selected_scenario,
+        shock_percent,
     )
 
-st.info(
-    scenario_result["comment"]
-)
+    sr1, sr2 = st.columns(2)
 
-st.markdown("#### K16A · Scenario Driver Breakdown")
-show_all_drivers = st.checkbox(
-    "Tüm fonları göster",
-    value=False,
-    key="show_all_scenario_drivers",
-)
+    with sr1:
 
-if len(scenario_drivers_df) == 0:
+        st.metric(
+            "Tahmini Etki (%)",
+            f"%{scenario_result['estimated_impact_pct']}",
+        )
+
+    with sr2:
+
+        st.metric(
+            "Tahmini Etki (TL)",
+            f"{scenario_result['estimated_impact_tl']:,.0f} TL",
+        )
 
     st.info(
-        "Senaryo driver verisi oluşmadı."
+        scenario_result["comment"]
     )
 
-else:
-
-    display_df = scenario_drivers_df.copy()
-
-    if not show_all_drivers:
-        display_df = display_df.head(5)
-
-
-    display_df["estimated_effect_pct"] = (
-        display_df["estimated_effect_pct"]
-        .round(2)
+    st.markdown("#### K16A · Scenario Driver Breakdown")
+    show_all_drivers = st.checkbox(
+        "Tüm fonları göster",
+        value=False,
+        key="show_all_scenario_drivers",
     )
 
-    display_df["estimated_effect_tl"] = (
-        display_df["estimated_effect_tl"]
-        .round(0)
+    if len(scenario_drivers_df) == 0:
+
+        st.info(
+            "Senaryo driver verisi oluşmadı."
+        )
+
+    else:
+
+        display_df = scenario_drivers_df.copy()
+
+        if not show_all_drivers:
+            display_df = display_df.head(5)
+
+
+        display_df["estimated_effect_pct"] = (
+            display_df["estimated_effect_pct"]
+            .round(2)
+        )
+
+        display_df["estimated_effect_tl"] = (
+            display_df["estimated_effect_tl"]
+            .round(0)
+        )
+
+        st.dataframe(
+            display_df.rename(
+                columns={
+                    "fund_code": "Fon",
+                    "estimated_effect_pct": "Etki %",
+                    "estimated_effect_tl": "Etki TL",
+                    "theme_primary": "Tema",
+                }
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    st.divider()
+
+if selected_page == "Risk":
+    st.markdown("### K08 · AI Portfolio Awareness Feed")
+
+    feed_cols = st.columns(5)
+
+    for item in awareness_feed:
+
+        if item["severity"] == "Kritik":
+            badge = "🔴 Kritik"
+        elif item["severity"] == "İzlenmeli":
+            badge = "🟠 İzlenmeli"
+        elif item["severity"] == "Orta":
+            badge = "🟡 Orta"
+        else:
+            badge = "🟢 Kontrollü"
+
+        col = feed_cols[
+            awareness_feed.index(item) % 5
+        ]
+
+        with col:
+
+
+            with st.container(border=True):
+
+                st.markdown(
+                    f"""
+                    <div style="font-size:12px; line-height:1.25;">
+                        <b>{item['icon']} {item['title']}</b><br>
+                        <span style="color:#9ca3af;">
+                            {badge} · Risk: {item['score']}/100
+                        </span><br>
+                        <span>{item['message']}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+    st.divider()
+
+    st.markdown("### K08A · Liquidity / Exit Engine")
+
+    liq_top, liq_stats = st.columns([1.2, 1])
+
+    with liq_top:
+
+        st.metric(
+            "Likidite Skoru",
+            f"{liquidity_data['liquidity_score']}/100",
+            liquidity_data["level"],
+        )
+
+        st.caption(
+            f"Ağırlıklı Ortalama Satış Valörü: "
+            f"T+{liquidity_data['weighted_sell_value']}"
+        )
+
+        st.info(liquidity_data["insight"])
+
+    with liq_stats:
+
+        c1, c2, c3, c4 = st.columns(4)
+
+        with c1:
+            st.metric(
+                "Anlık",
+                f"%{liquidity_data['instant_ratio']}",
+            )
+
+        with c2:
+            st.metric(
+                "Orta",
+                f"%{liquidity_data['medium_ratio']}",
+            )
+
+        with c3:
+            st.metric(
+                "Yavaş",
+                f"%{liquidity_data['slow_ratio']}",
+            )
+
+        with c4:
+            st.metric(
+                "PPF",
+                f"%{liquidity_data['money_market_ratio']}",
+            )
+
+    st.divider()
+
+if selected_page == "Overview":
+    st.markdown("### K14 · Portfolio Health Monitor")
+
+    health_cols = st.columns(6)
+
+    for idx, item in enumerate(health_data):
+
+        col = health_cols[idx % 6]
+
+        with col:
+
+            level = item["level"]
+
+            if level == "Kritik":
+                icon = "🔴"
+            elif level == "İzlenmeli":
+                icon = "🟠"
+            else:
+                icon = "🟢"
+
+            with st.container(border=True):
+
+                st.markdown(
+                    f"**{icon} {item['area']}**"
+                )
+
+                st.markdown(
+                    f"### {item['status']}"
+                )
+
+                st.caption(
+                    f"{item['level']} · {item['message']}"
+                )
+
+    st.divider()
+
+    st.markdown(
+        "<h3 style='color:#9ca3af;'>🛠️ K15 · Data Quality Monitor</h3>",
+        unsafe_allow_html=True,
     )
+    dq_cols = st.columns(6)
+
+    for idx, item in enumerate(data_quality):
+
+        col = dq_cols[idx % 6]
+
+        with col:
+
+            level = item["level"]
+
+            if level == "Kritik":
+                icon = "🔴"
+            elif level == "İzlenmeli":
+                icon = "🟠"
+            else:
+                icon = "🟢"
+
+            with st.container(border=True):
+
+                st.markdown(
+                    f"**{icon} {item['check']}**"
+                )
+
+                st.markdown(
+                    f"### {item['status']}"
+                )
+
+                st.caption(item["message"])
+
+
+    st.divider()
+
+if selected_page == "History":
+    render_portfolio_change_tracker(snapshot_changes)
+
+    st.divider()
+
+if selected_page == "Funds":
+    st.markdown(
+        '<div class="section-title">K12 · Fon Tablosu</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.caption(
+        "Demo repository is read-only. Position edit, delete, TEFAS refresh, and metadata writes are not available."
+    )
+
+    detail_options = df["fund_code"].astype(str).tolist()
+    detail_name_map = (
+        df.set_index("fund_code")["fund_name"].astype(str).to_dict()
+        if "fund_name" in df.columns
+        else {}
+    )
+
+    detail_select_col, detail_action_col = st.columns([2.5, 1])
+
+    with detail_select_col:
+        selected_detail_fund = st.selectbox(
+            "Tablodan detay için fon seç",
+            detail_options,
+            format_func=lambda code: (
+                f"{code} - {detail_name_map.get(code, code)}"
+            ),
+            key="k12_detail_selectbox",
+        )
+
+    with detail_action_col:
+        st.write("")
+        st.write("")
+        open_detail_dialog = st.button(
+            "Detay Penceresini Aç",
+            key="k12_open_detail_dialog",
+            use_container_width=True,
+        )
+
+    if open_detail_dialog:
+        selected_dialog_rows = df[
+            df["fund_code"].astype(str) == str(selected_detail_fund)
+        ]
+        if not selected_dialog_rows.empty:
+            render_fund_detail_dialog(selected_dialog_rows.iloc[0])
+
+    display_df = df[
+        [
+            "fund_code",
+            "currency",
+            "current_value",
+            "pnl",
+            "return_pct",
+            "actual_weight",
+            "daily_return_pct",
+        ]
+    ].copy()
+
+    display_df = display_df.rename(
+
+        columns={
+            "fund_code": "Fon",
+            "currency": "Kur",
+            "current_value": "Güncel Değer",
+            "pnl": "K/Z",
+            "return_pct": "Getiri %",
+            "actual_weight": "Ağırlık %",
+            "daily_return_pct": "Günlük %",
+        }
+    )
+
+    for col in [
+        "Güncel Değer",
+        "K/Z",
+        "Getiri %",
+        "Ağırlık %",
+        "Günlük %",
+    ]:
+
+        display_df[col] = display_df[col].map(
+            lambda x: f"{x:,.2f}"
+        )
 
     st.dataframe(
-        display_df.rename(
-            columns={
-                "fund_code": "Fon",
-                "estimated_effect_pct": "Etki %",
-                "estimated_effect_tl": "Etki TL",
-                "theme_primary": "Tema",
-            }
+
+        display_df.style.set_properties(
+            subset=[
+                "Güncel Değer",
+                "K/Z",
+                "Getiri %",
+                "Ağırlık %",
+                "Günlük %",
+            ],
+            **{"text-align": "right"},
+        ).map(
+            color_pnl,
+            subset=[
+                "K/Z",
+                "Getiri %",
+                "Günlük %",
+            ],
         ),
         use_container_width=True,
         hide_index=True,
     )
-    
-st.divider()
-
-
-st.markdown("### K08 · AI Portfolio Awareness Feed")
-
-feed_cols = st.columns(5)
-
-for item in awareness_feed:
-
-    if item["severity"] == "Kritik":
-        badge = "🔴 Kritik"
-    elif item["severity"] == "İzlenmeli":
-        badge = "🟠 İzlenmeli"
-    elif item["severity"] == "Orta":
-        badge = "🟡 Orta"
-    else:
-        badge = "🟢 Kontrollü"
-
-    col = feed_cols[
-        awareness_feed.index(item) % 5
-    ]
-
-    with col:
-
-
-        with st.container(border=True):
-        
-            st.markdown(
-                f"""
-                <div style="font-size:12px; line-height:1.25;">
-                    <b>{item['icon']} {item['title']}</b><br>
-                    <span style="color:#9ca3af;">
-                        {badge} · Risk: {item['score']}/100
-                    </span><br>
-                    <span>{item['message']}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-st.divider()
-
-st.markdown("### K08A · Liquidity / Exit Engine")
-
-liq_top, liq_stats = st.columns([1.2, 1])
-
-with liq_top:
-
-    st.metric(
-        "Likidite Skoru",
-        f"{liquidity_data['liquidity_score']}/100",
-        liquidity_data["level"],
-    )
-
-    st.caption(
-        f"Ağırlıklı Ortalama Satış Valörü: "
-        f"T+{liquidity_data['weighted_sell_value']}"
-    )
-
-    st.info(liquidity_data["insight"])
-
-with liq_stats:
-
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        st.metric(
-            "Anlık",
-            f"%{liquidity_data['instant_ratio']}",
-        )
-
-    with c2:
-        st.metric(
-            "Orta",
-            f"%{liquidity_data['medium_ratio']}",
-        )
-
-    with c3:
-        st.metric(
-            "Yavaş",
-            f"%{liquidity_data['slow_ratio']}",
-        )
-
-    with c4:
-        st.metric(
-            "PPF",
-            f"%{liquidity_data['money_market_ratio']}",
-        )
-
-st.divider()
-
-
-st.markdown("### K14 · Portfolio Health Monitor")
-
-health_cols = st.columns(6)
-
-for idx, item in enumerate(health_data):
-
-    col = health_cols[idx % 6]
-
-    with col:
-
-        level = item["level"]
-
-        if level == "Kritik":
-            icon = "🔴"
-        elif level == "İzlenmeli":
-            icon = "🟠"
-        else:
-            icon = "🟢"
-
-        with st.container(border=True):
-
-            st.markdown(
-                f"**{icon} {item['area']}**"
-            )
-
-            st.markdown(
-                f"### {item['status']}"
-            )
-
-            st.caption(
-                f"{item['level']} · {item['message']}"
-            )
-
-st.divider()
-
-st.markdown(
-    "<h3 style='color:#9ca3af;'>🛠️ K15 · Data Quality Monitor</h3>",
-    unsafe_allow_html=True,
-)
-dq_cols = st.columns(6)
-
-for idx, item in enumerate(data_quality):
-
-    col = dq_cols[idx % 6]
-
-    with col:
-
-        level = item["level"]
-
-        if level == "Kritik":
-            icon = "🔴"
-        elif level == "İzlenmeli":
-            icon = "🟠"
-        else:
-            icon = "🟢"
-
-        with st.container(border=True):
-
-            st.markdown(
-                f"**{icon} {item['check']}**"
-            )
-
-            st.markdown(
-                f"### {item['status']}"
-            )
-
-            st.caption(item["message"])
-
-
-st.divider()
-
-
-render_portfolio_change_tracker(snapshot_changes)
-
-st.divider()
-
-st.markdown(
-    '<div class="section-title">K12 · Fon Tablosu</div>',
-    unsafe_allow_html=True,
-)
-
-st.caption(
-    "Demo repository is read-only. Position edit, delete, TEFAS refresh, and metadata writes are not available."
-)
-
-detail_options = df["fund_code"].astype(str).tolist()
-detail_name_map = (
-    df.set_index("fund_code")["fund_name"].astype(str).to_dict()
-    if "fund_name" in df.columns
-    else {}
-)
-
-detail_select_col, detail_action_col = st.columns([2.5, 1])
-
-with detail_select_col:
-    selected_detail_fund = st.selectbox(
-        "Tablodan detay için fon seç",
-        detail_options,
-        format_func=lambda code: (
-            f"{code} - {detail_name_map.get(code, code)}"
-        ),
-        key="k12_detail_selectbox",
-    )
-
-with detail_action_col:
-    st.write("")
-    st.write("")
-    open_detail_dialog = st.button(
-        "Detay Penceresini Aç",
-        key="k12_open_detail_dialog",
-        use_container_width=True,
-    )
-
-if open_detail_dialog:
-    selected_dialog_rows = df[
-        df["fund_code"].astype(str) == str(selected_detail_fund)
-    ]
-    if not selected_dialog_rows.empty:
-        render_fund_detail_dialog(selected_dialog_rows.iloc[0])
-
-display_df = df[
-    [
-        "fund_code",
-        "currency",
-        "current_value",
-        "pnl",
-        "return_pct",
-        "actual_weight",
-        "daily_return_pct",
-    ]
-].copy()
-
-display_df = display_df.rename(
-
-    columns={
-        "fund_code": "Fon",
-        "currency": "Kur",
-        "current_value": "Güncel Değer",
-        "pnl": "K/Z",
-        "return_pct": "Getiri %",
-        "actual_weight": "Ağırlık %",
-        "daily_return_pct": "Günlük %",
-    }
-)
-
-for col in [
-    "Güncel Değer",
-    "K/Z",
-    "Getiri %",
-    "Ağırlık %",
-    "Günlük %",
-]:
-
-    display_df[col] = display_df[col].map(
-        lambda x: f"{x:,.2f}"
-    )
-
-st.dataframe(
-    
-    display_df.style.set_properties(
-        subset=[
-            "Güncel Değer",
-            "K/Z",
-            "Getiri %",
-            "Ağırlık %",
-            "Günlük %",
-        ],
-        **{"text-align": "right"},
-    ).map(
-        color_pnl,
-        subset=[
-            "K/Z",
-            "Getiri %",
-            "Günlük %",
-        ],
-    ),
-    use_container_width=True,
-    hide_index=True,
-)
