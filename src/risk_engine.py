@@ -22,8 +22,59 @@ WEIGHTS = {
 }
 
 
+SCENARIO_CONFIG = {
+    "USD Forecast": {
+        "label": "USD/TRY degisim %",
+        "unit": "%",
+        "exposure_column": "currency_exposure_usd",
+        "sensitivity": 1.0,
+        "comment": "USD exposure yuksek fonlar kur sokuna daha duyarlidir.",
+    },
+    "Gold Forecast": {
+        "label": "Altin degisim %",
+        "unit": "%",
+        "exposure_column": "gold_exposure",
+        "sensitivity": 1.0,
+        "comment": "Altin maruziyeti yuksek fonlar altin sokuna daha duyarlidir.",
+    },
+    "Nasdaq Forecast": {
+        "label": "Nasdaq / global teknoloji degisim %",
+        "unit": "%",
+        "exposure_columns": ["technology_exposure", "foreign_equity_exposure"],
+        "exposure_divisor": 200,
+        "sensitivity": 1.0,
+        "comment": "Teknoloji ve yabanci hisse yogun fonlar global hisse sokuna daha duyarlidir.",
+    },
+    "BIST Forecast": {
+        "label": "BIST / TL hisse degisim %",
+        "unit": "%",
+        "exposure_column": "equity_exposure",
+        "sensitivity": 1.0,
+        "comment": "Hisse yogun fonlar BIST/TL hisse sokuna daha duyarlidir.",
+    },
+    "TCMB Policy Rate Forecast": {
+        "label": "TCMB politika faizi degisimi",
+        "unit": "puan",
+        "exposure_column": "money_market_exposure",
+        "sensitivity": 0.10,
+        "comment": (
+            "Faiz sokunun getirisi degil, para piyasasi katmaninin politika faizi "
+            "duyarliligina iliskin FonPilot heuristic gostergesidir."
+        ),
+    },
+}
+
+
 def clamp(value: float, min_value: int = 0, max_value: int = 100) -> int:
-    return int(max(min_value, min(max_value, round(value))))
+    try:
+        numeric_value = float(value)
+    except Exception:
+        numeric_value = min_value
+
+    if pd.isna(numeric_value):
+        numeric_value = min_value
+
+    return int(max(min_value, min(max_value, round(numeric_value))))
 
 
 def level_from_score(score: int) -> str:
@@ -41,7 +92,11 @@ def load_inputs() -> pd.DataFrame:
 
     df["position_cost"] = df["units"] * df["avg_cost"]
     total_cost = df["position_cost"].sum()
-    df["portfolio_weight"] = df["position_cost"] / total_cost * 100
+
+    if total_cost > 0:
+        df["portfolio_weight"] = df["position_cost"] / total_cost * 100
+    else:
+        df["portfolio_weight"] = 0
 
     return df
 
@@ -87,7 +142,62 @@ def load_inputs_with_latest_prices() -> pd.DataFrame:
     return df
 
 def weighted_average(df: pd.DataFrame, column: str) -> float:
-    return (df[column] * df["portfolio_weight"]).sum() / 100
+    if df.empty or column not in df.columns or "portfolio_weight" not in df.columns:
+        return 0
+
+    values = pd.to_numeric(df[column], errors="coerce").fillna(0)
+    weights = pd.to_numeric(df["portfolio_weight"], errors="coerce").fillna(0)
+
+    return (values * weights).sum() / 100
+
+
+def weighted_current_value_average(df: pd.DataFrame, column: str) -> float:
+    if df.empty or column not in df.columns or "current_value" not in df.columns:
+        return 0
+
+    values = pd.to_numeric(df[column], errors="coerce").fillna(0)
+    current_values = pd.to_numeric(df["current_value"], errors="coerce").fillna(0)
+    total_current_value = current_values.sum()
+
+    if total_current_value <= 0:
+        return 0
+
+    weights = current_values / total_current_value
+
+    return (values * weights).sum()
+
+
+def calculate_factor_exposure(df: pd.DataFrame, scenario_name: str) -> pd.Series:
+    config = SCENARIO_CONFIG.get(scenario_name, {})
+
+    if "exposure_columns" in config:
+        exposure = sum(
+            pd.to_numeric(
+                df[column] if column in df.columns else pd.Series(0, index=df.index),
+                errors="coerce",
+            ).fillna(0)
+            for column in config["exposure_columns"]
+        )
+        return exposure / config.get("exposure_divisor", 100)
+
+    column = config.get("exposure_column")
+    if not column:
+        return pd.Series(0, index=df.index)
+
+    values = df[column] if column in df.columns else pd.Series(0, index=df.index)
+    return pd.to_numeric(values, errors="coerce").fillna(0) / 100
+
+
+def calculate_portfolio_factor_exposure(df: pd.DataFrame, scenario_name: str) -> float:
+    total_value = pd.to_numeric(df.get("current_value", 0), errors="coerce").fillna(0).sum()
+
+    if total_value <= 0:
+        return 0
+
+    weights = pd.to_numeric(df["current_value"], errors="coerce").fillna(0) / total_value
+    exposure = calculate_factor_exposure(df, scenario_name)
+
+    return float((weights * exposure).sum() * 100)
 
 
 def score_currency_risk(df: pd.DataFrame) -> dict:
@@ -354,7 +464,7 @@ def generate_awareness_feed(result: dict) -> list[dict]:
     return feed
 
 def calculate_exposure_summary() -> dict:
-    df = load_inputs()
+    df = load_inputs_with_latest_prices()
 
     exposure_fields = {
         "USD": "currency_exposure_usd",
@@ -370,7 +480,7 @@ def calculate_exposure_summary() -> dict:
     result = {}
 
     for label, column in exposure_fields.items():
-        value = weighted_average(df, column)
+        value = weighted_current_value_average(df, column)
 
         if value >= 60:
             level = "Yüksek"
@@ -514,7 +624,7 @@ def calculate_liquidity_exit_summary() -> dict:
     }
 
 def calculate_theme_exposure_summary() -> list[dict]:
-    df = load_inputs()
+    df = load_inputs_with_latest_prices()
 
     theme_map = {
         "Teknoloji": "technology_exposure",
@@ -530,7 +640,7 @@ def calculate_theme_exposure_summary() -> list[dict]:
     result = []
 
     for label, column in theme_map.items():
-        value = weighted_average(df, column)
+        value = weighted_current_value_average(df, column)
 
         if value >= 50:
             risk_effect = "Yüksek"
@@ -816,78 +926,34 @@ def run_macro_scenario(
             "scenario": scenario_name,
             "estimated_impact_pct": 0,
             "estimated_impact_tl": 0,
-            "comment": "Portföy değeri hesaplanamadı.",
+            "relevant_exposure": 0,
+            "sensitivity": 0,
+            "comment": "Portfoy degeri hesaplanamadi.",
         }
 
-    weights = (
-        df["current_value"] / total_value
-    )
+    config = SCENARIO_CONFIG.get(scenario_name)
 
-    if scenario_name == "USD Forecast":
+    if not config:
 
-        exposure = (
-            df["currency_exposure_usd"] / 100
-        )
+        return {
+            "scenario": scenario_name,
+            "estimated_impact_pct": 0,
+            "estimated_impact_tl": 0,
+            "relevant_exposure": 0,
+            "sensitivity": 0,
+            "comment": "Tanimsiz senaryo.",
+        }
 
-        scenario_beta = exposure
+    weights = df["current_value"] / total_value
+    exposure = calculate_factor_exposure(df, scenario_name)
+    sensitivity = config.get("sensitivity", 1.0)
 
-        comment = (
-            "USD exposure yüksek fonlar pozitif etkilenebilir."
-        )
-
-    elif scenario_name == "Gold Forecast":
-
-        exposure = (
-            df["gold_exposure"] / 100
-        )
-
-        scenario_beta = exposure
-
-        comment = (
-            "Altın temalı fonlar güç kazanabilir."
-        )
-
-    elif scenario_name == "Nasdaq Forecast":
-
-        exposure = (
-            (
-                df["technology_exposure"]
-                + df["foreign_equity_exposure"]
-            ) / 200
-        )
-
-        scenario_beta = -exposure
-
-        comment = (
-            "Teknoloji ve yabancı hisse yoğun fonlar baskılanabilir."
-        )
-
-    elif scenario_name == "BIST Forecast":
-
-        exposure = (
-            df["equity_exposure"]
-            / 100
-        )
-
-        scenario_beta = -exposure
-
-        comment = (
-            "Hisse yoğun fonlar negatif etkilenebilir."
-        )
-
-    else:
-
-        scenario_beta = 0
-
-        comment = (
-            "Tanımsız senaryo."
-        )
-
-    estimated_portfolio_effect = (
+    estimated_portfolio_effect = float((
         weights
-        * scenario_beta
+        * exposure
         * shock_percent
-    ).sum()
+        * sensitivity
+    ).sum())
 
     estimated_tl_effect = (
         total_value
@@ -897,17 +963,21 @@ def run_macro_scenario(
 
     return {
         "scenario": scenario_name,
-        "estimated_impact_pct": round(
+        "estimated_impact_pct": float(round(
             estimated_portfolio_effect,
             2,
-        ),
-        "estimated_impact_tl": round(
+        )),
+        "estimated_impact_tl": float(round(
             estimated_tl_effect,
             0,
+        )),
+        "relevant_exposure": round(
+            calculate_portfolio_factor_exposure(df, scenario_name),
+            1,
         ),
-        "comment": comment,
+        "sensitivity": sensitivity,
+        "comment": config.get("comment", ""),
     }
-
 def calculate_snapshot_change_tracker() -> list[dict]:
     if IS_DEMO_MODE:
         return [
@@ -1022,45 +1092,21 @@ def calculate_scenario_drivers(
     if total_value <= 0:
         return pd.DataFrame()
 
+    config = SCENARIO_CONFIG.get(scenario_name)
+
+    if not config:
+        return pd.DataFrame()
+
     df["weight"] = df["current_value"] / total_value
-
-    if scenario_name == "USD Forecast":
-
-        df["positive_beta"] = df["currency_exposure_usd"] / 100
-        df["negative_beta"] = df["currency_exposure_tl"] / 100
-
-    elif scenario_name == "Gold Forecast":
-
-        df["positive_beta"] = df["gold_exposure"] / 100
-        df["negative_beta"] = 0
-
-    elif scenario_name == "Nasdaq Forecast":
-
-        df["positive_beta"] = (
-            df["technology_exposure"]
-            + df["foreign_equity_exposure"]
-        ) / 200
-
-        df["negative_beta"] = df["money_market_exposure"] / 100
-
-    elif scenario_name == "BIST Forecast":
-
-        df["positive_beta"] = df["equity_exposure"] / 100
-        df["negative_beta"] = df["money_market_exposure"] / 100
-
-    else:
-
-        df["positive_beta"] = 0
-        df["negative_beta"] = 0
-
-    direction = 1 if shock_percent >= 0 else -1
-    shock_abs = abs(shock_percent)
+    df["relevant_exposure"] = calculate_factor_exposure(df, scenario_name) * 100
+    df["scenario_shock"] = shock_percent
+    df["sensitivity"] = config.get("sensitivity", 1.0)
 
     df["estimated_effect_pct"] = (
         df["weight"]
-        *df["positive_beta"]
-        * shock_abs
-        * direction
+        * (df["relevant_exposure"] / 100)
+        * df["scenario_shock"]
+        * df["sensitivity"]
     )
 
     df["estimated_effect_tl"] = (
@@ -1072,6 +1118,9 @@ def calculate_scenario_drivers(
     result_df = df[
         [
             "fund_code",
+            "scenario_shock",
+            "relevant_exposure",
+            "sensitivity",
             "estimated_effect_pct",
             "estimated_effect_tl",
             "theme_primary",
@@ -1084,7 +1133,6 @@ def calculate_scenario_drivers(
     )
 
     return result_df
-
 if __name__ == "__main__":
     result = calculate_risk_engine()
 
